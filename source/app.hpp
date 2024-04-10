@@ -12,7 +12,7 @@ node_name_t convert(const char* str) {
     return value;
 }
 
-std::tuple<const char*, node_name_t, node_name_t> parse(int arg_count, char* arg_vars[])
+std::tuple<const char*, node_name_t, node_name_t> parse_args(int arg_count, char* arg_vars[])
 {
     using namespace std::string_literals;
     if (arg_count != 7)

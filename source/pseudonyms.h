@@ -1,8 +1,8 @@
-#include "../matrix/matrix.h"
-#include "../graph/graph.h"
 #include <set>
 #include <vector>
 #include <limits>
+#include "../matrix/matrix.h"
+#include "../graph/graph.h"
 
 using node_name_t = size_t;
 using weight_t = double;

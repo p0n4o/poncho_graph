@@ -1,0 +1,6 @@
+[submodule "graph"]
+	path = graph
+	url = https://git.miem.hse.ru/ngyurakov_1/laba2.git
+[submodule "matrix"]
+	path = matrix
+	url = https://git.miem.hse.ru/aip2/laba1.git

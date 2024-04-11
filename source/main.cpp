@@ -8,6 +8,8 @@ int main(int arg_count, char* arg_values[]) {
 
         matrix_t m0 = load_matrix(".../workdir/input.txt");
         std::cout << m0;
+
+        graph::Graph graph = create_graph<int>(m0);
     }
     catch (std::exception& err) {
         std::cout << err.what();

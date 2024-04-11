@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <fstream>
 
+
+// PARSING:
 node_name_t convert(const char* str) {
     using namespace std::string_literals;
     node_name_t value = 0;
@@ -40,6 +42,8 @@ std::tuple<const char*, node_name_t, node_name_t> parse_args(int arg_count, char
     return { args["--file"], convert(args["--from"]), convert(args["--to"]) };
 }
 
+
+// LOAD MATRIX:
 void divider(std::istream& in) {
     char dev;
     if (!(in >> dev)) throw std::runtime_error("ERROR while read");
@@ -90,5 +94,24 @@ matrix_t load_matrix(const char* filename)
         std::copy(vec.begin(), vec.end(), m.begin() + (i++) * vec.size());
     return m;
 }
+
+
+// CREATE GRAPH:
+
+template<typename Node>
+graph_t<Node> create_graph(const matrix_t& mtr) noexcept{
+    graph_t<Node> graph;
+    for (size_t i = 0; i < mtr.rows(); ++i) // количество строк — число узлов
+        graph.insert_node(i, Node());
+    for (size_t i = 0; i < mtr.rows(); ++i) {
+        for (size_t j = 0; j < mtr.columns(); ++j) {
+            if (mtr(i, j) > EPS) // если точно не ноль
+                graph.insert_edge(std::pair<node_name_t, node_name_t>(i, j), mtr(i,j)); // из определения матрицы смежности:
+                                                                                                           // строка — откуда
+        }
+    }
+    return graph;
+}
+
 
 

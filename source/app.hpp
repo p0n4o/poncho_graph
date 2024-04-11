@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <algorithm>
+#include <fstream>
 
 node_name_t convert(const char* str) {
     using namespace std::string_literals;
@@ -38,4 +39,56 @@ std::tuple<const char*, node_name_t, node_name_t> parse_args(int arg_count, char
 #endif // NDEBUG
     return { args["--file"], convert(args["--from"]), convert(args["--to"]) };
 }
+
+void divider(std::istream& in) {
+    char dev;
+    if (!(in >> dev)) throw std::runtime_error("ERROR while read");
+    if (dev != '|') throw std::runtime_error("Invalid divider");
+}
+
+void next_row(std::istream& in) {
+    char dev;
+    if (!(in >> dev)) {
+        if (!in.eof()) throw std::runtime_error("ERROR while read the row");
+        return;
+    }
+    if (dev != '|') throw std::runtime_error("Invalid begin of the row");
+    in.unget(); // Если не конец файла, то считанная палка — начало следующей строки
+}
+
+void matrix_check(const std::vector<std::vector<weight_t>>& mtr_vec) {
+    for (const auto& vec : mtr_vec) {
+        if (vec.size() != mtr_vec.begin()->size())
+            throw std::runtime_error("Incorrect matrix: Different rows sizes");
+    }
+    if (mtr_vec.size() != mtr_vec.begin()->size()) throw std::runtime_error("Incorrect matrix: Matrix is not square");
+}
+
+matrix_t load_matrix(const char* filename)
+{
+    std::ifstream fin(filename);
+    if (!fin) throw std::runtime_error("ERROR reading the file");
+
+    weight_t el = 0;
+
+    std::vector<std::vector<weight_t>> rows_vec;
+    while (!fin.eof()) {
+        std::vector<weight_t> vec;
+        divider(fin);
+        while (fin >> el) vec.push_back(el); // кастомный тип, в который не могут неявно преобразовываться char'ы
+        fin.clear();
+        divider(fin);
+        rows_vec.push_back(vec);
+        next_row(fin);
+    }
+
+    matrix_check(rows_vec);
+    matrix_t m(rows_vec.size(), rows_vec.size());
+
+    size_t i = 0;
+    for (const auto& vec : rows_vec)
+        std::copy(vec.begin(), vec.end(), m.begin() + (i++) * vec.size());
+    return m;
+}
+
 

@@ -113,5 +113,60 @@ graph_t<Node> create_graph(const matrix_t& mtr) noexcept{
     return graph;
 }
 
+// KOSARAJU-SHARIR:
+
+template<typename func>
+void dfs_step(graph_t<bool>& graph, const node_name_t& key_from, func add) { // в цикле от выбранной вершины проходится dfs'ом, пока не упрется в конец
+                                                                             // (не умеет менять вершину, если встал в тупик)
+
+    for (auto& [key_to, weight] : (*graph.find(key_from)).second) { // .find возвращает ноду,
+                                                                                                   // после чего достаем unordered_map с ребрами
+        if (!graph[key_to]) {
+            graph[key_to] = true;
+            dfs_step(graph, key_to, add); // рекурсивно продолжаем закрашивать дальше
+        }
+    }
+    add(key_from); // добавили в список dfs пройденную вершину
+}
+
+
+std::vector<node_name_t> topology_sort(graph_t<bool>& graph) noexcept { // ВОЗВРАЩАЕТ ПЕРЕВЕРНУТЫЙ DFC-МАССИВ !!!
+    std::vector<node_name_t> dfc_vec; // В цикле вызывает dfs_step для всех непосещенных вершин (выбирает вершину по флагу)
+    for (auto& [key_from, nodes] : graph) {
+        if (!graph[key_from]) {
+            graph[key_from] = true;
+            dfs_step(graph, key_from, [&dfc_vec](const node_name_t& key_from) { dfc_vec.push_back(key_from); });
+            // insert может привести к невалидности итераторов, поэтому используем более безопасный push_back
+
+            // Записываем все вершины В ОДИН вектор в обратном порядке топологической сортировки
+        }
+    }
+    return dfc_vec;
+}
+
+components_t components_by_dfs(graph_t<bool>& graph, const std::vector<node_name_t>& nodes) { // Запсукает dfs для вершин в том порядке,
+                                                                                              // в котором они записаны в переданном векторе
+    components_t strong_components; // для хранения компонент связанности
+    for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
+        std::set<node_name_t> comp;
+        if (!graph[*it]) {
+            graph[*it] = true;
+            dfs_step(graph, *it, [&comp](const node_name_t& key_from) { comp.insert(key_from); });
+        }
+        if (!comp.empty()) strong_components.insert(comp); // На каждой итерации получает set — вершины в сильной компоненте связанности
+                                                              // и вставляет его в set из сильных компонент связанности
+    }
+    return strong_components;
+}
+
+components_t compute_components(const matrix_t& mtr) noexcept {
+    graph_t<bool> graph_initial = create_graph<bool>(mtr);
+    graph_t<bool> graph_inverted = create_graph<bool>(transpose(mtr));
+    std::vector<node_name_t> sorted_nodes = topology_sort(graph_inverted);
+    return components_by_dfs(graph_initial, sorted_nodes);
+}
+
+
+
 
 

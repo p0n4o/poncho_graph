@@ -1,9 +1,4 @@
 #pragma once
-#include <unordered_map>
-#include <sstream>
-#include <algorithm>
-#include <fstream>
-
 
 // PARSING:
 node_name_t convert(const char* str) {
@@ -26,13 +21,14 @@ std::tuple<const char*, node_name_t, node_name_t> parse_args(int arg_count, char
         {"--from", nullptr},
         {"--to", nullptr}
     };
+
     for (char** t = arg_vars + 1; t < arg_vars + arg_count; t += 2) {
         auto it = args.find(*t);
         if (it == args.end())
             throw std::runtime_error("Invalid argument: "s + *t);
         auto& [key, value] = *it;
         if (value != nullptr)
-            throw std::runtime_error("Dublicated argument: "s + *t);
+            throw std::runtime_error("Duplicated argument: "s + *t);
         value = *(t + 1);
     }
 #ifndef NDEBUG
@@ -68,8 +64,7 @@ void matrix_check(const std::vector<std::vector<weight_t>>& mtr_vec) {
     if (mtr_vec.size() != mtr_vec.begin()->size()) throw std::runtime_error("Incorrect matrix: Matrix is not square");
 }
 
-matrix_t load_matrix(const char* filename)
-{
+matrix_t load_matrix(const char* filename){
     std::ifstream fin(filename);
     if (!fin) throw std::runtime_error("ERROR reading the file");
 
@@ -95,9 +90,14 @@ matrix_t load_matrix(const char* filename)
     return m;
 }
 
+bool is_matrix_positive(const matrix_t& m) {
+    auto it = std::find_if(m.begin(), m.end(), [](const weight_t& el) { return el < 0; });
+    if (it == m.end()) return true;
+    return false;
+}
+
 
 // CREATE GRAPH:
-
 template<typename Node>
 graph_t<Node> create_graph(const matrix_t& mtr) noexcept{
     graph_t<Node> graph;
@@ -113,57 +113,121 @@ graph_t<Node> create_graph(const matrix_t& mtr) noexcept{
     return graph;
 }
 
+
 // KOSARAJU-SHARIR:
+namespace Kosaraju_Sharir {
+    template<typename func>
+    void dfs(graph_t<bool> &graph, const node_name_t &key_from, func add) { // в цикле от выбранной вершины проходится dfs'ом, пока не упрется в конец
+        // (не умеет менять вершину, если встал в тупик)
 
-template<typename func>
-void dfs_step(graph_t<bool>& graph, const node_name_t& key_from, func add) { // в цикле от выбранной вершины проходится dfs'ом, пока не упрется в конец
-                                                                             // (не умеет менять вершину, если встал в тупик)
-
-    for (auto& [key_to, weight] : (*graph.find(key_from)).second) { // .find возвращает ноду,
-                                                                                                   // после чего достаем unordered_map с ребрами
-        if (!graph[key_to]) {
-            graph[key_to] = true;
-            dfs_step(graph, key_to, add); // рекурсивно продолжаем закрашивать дальше
+        for (auto &[key_to, weight]: (*graph.find(key_from)).second) { // .find возвращает ноду,
+            // после чего достаем unordered_map с ребрами
+            if (!graph[key_to]) {
+                graph[key_to] = true;
+                dfs(graph, key_to, add); // рекурсивно продолжаем закрашивать дальше
+            }
         }
+        add(key_from); // добавили в список dfs пройденную вершину
     }
-    add(key_from); // добавили в список dfs пройденную вершину
+
+
+    std::vector<node_name_t> topology_sort(graph_t<bool> &graph) noexcept { // ВОЗВРАЩАЕТ ПЕРЕВЕРНУТЫЙ DFC-МАССИВ !!!
+        std::vector<node_name_t> dfc_vec; // В цикле вызывает dfs_step для всех непосещенных вершин (выбирает вершину по флагу)
+        for (auto &[key_from, nodes]: graph) {
+            if (!graph[key_from]) {
+                graph[key_from] = true;
+                dfs(graph, key_from, [&dfc_vec](const node_name_t &key_from) { dfc_vec.push_back(key_from); });
+                // insert может привести к невалидности итераторов, поэтому используем более безопасный push_back
+
+                // Записываем все вершины В ОДИН вектор в обратном порядке топологической сортировки
+            }
+        }
+        return dfc_vec;
+    }
+
+    components_t components_by_dfs(graph_t<bool> &graph, const std::vector<node_name_t> &nodes) { // Запсукает dfs для вершин в том порядке,
+        // в котором они записаны в переданном векторе
+        components_t strong_components; // для хранения компонент связанности
+        for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
+            std::set<node_name_t> comp;
+            if (!graph[*it]) {
+                graph[*it] = true;
+                dfs(graph, *it, [&comp](const node_name_t &key_from) { comp.insert(key_from); });
+            }
+            if (!comp.empty())
+                strong_components.insert(comp); // На каждой итерации получает set — вершины в сильной компоненте связанности
+            // и вставляет его в set из сильных компонент связанности
+        }
+        return strong_components;
+    }
 }
 
-
-std::vector<node_name_t> topology_sort(graph_t<bool>& graph) noexcept { // ВОЗВРАЩАЕТ ПЕРЕВЕРНУТЫЙ DFC-МАССИВ !!!
-    std::vector<node_name_t> dfc_vec; // В цикле вызывает dfs_step для всех непосещенных вершин (выбирает вершину по флагу)
-    for (auto& [key_from, nodes] : graph) {
-        if (!graph[key_from]) {
-            graph[key_from] = true;
-            dfs_step(graph, key_from, [&dfc_vec](const node_name_t& key_from) { dfc_vec.push_back(key_from); });
-            // insert может привести к невалидности итераторов, поэтому используем более безопасный push_back
-
-            // Записываем все вершины В ОДИН вектор в обратном порядке топологической сортировки
-        }
-    }
-    return dfc_vec;
-}
-
-components_t components_by_dfs(graph_t<bool>& graph, const std::vector<node_name_t>& nodes) { // Запсукает dfs для вершин в том порядке,
-                                                                                              // в котором они записаны в переданном векторе
-    components_t strong_components; // для хранения компонент связанности
-    for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
-        std::set<node_name_t> comp;
-        if (!graph[*it]) {
-            graph[*it] = true;
-            dfs_step(graph, *it, [&comp](const node_name_t& key_from) { comp.insert(key_from); });
-        }
-        if (!comp.empty()) strong_components.insert(comp); // На каждой итерации получает set — вершины в сильной компоненте связанности
-                                                              // и вставляет его в set из сильных компонент связанности
-    }
-    return strong_components;
-}
-
-components_t compute_components(const matrix_t& mtr) noexcept {
+components_t compute_components(const matrix_t &mtr) noexcept {
     graph_t<bool> graph_initial = create_graph<bool>(mtr);
     graph_t<bool> graph_inverted = create_graph<bool>(transpose(mtr));
-    std::vector<node_name_t> sorted_nodes = topology_sort(graph_inverted);
-    return components_by_dfs(graph_initial, sorted_nodes);
+    std::vector<node_name_t> sorted_nodes = Kosaraju_Sharir::topology_sort(graph_inverted);
+    return Kosaraju_Sharir::components_by_dfs(graph_initial, sorted_nodes);
+}
+
+
+// DIJIKSTRA:
+namespace Dijikstra{
+
+    NodesToBeVisited::NodesToBeVisited(graph_t<NodeDijkstra>& graph) noexcept {
+        for (auto it = graph.begin(); it != graph.end(); ++it)
+            unattended.push_back(it);
+    }
+
+    graph_t<NodeDijkstra>::iterator NodesToBeVisited::pop_min_weight() noexcept {
+
+        auto it_min = std::min_element(unattended.begin(), unattended.end(),
+                                   [](const auto it_a, const auto it_b) {
+            return (*it_a).second.value().marker < (*it_b).second.value().marker; }); // Компаратор, сравнивающий маркеры нод, перербирая итераторы
+
+        auto it = *it_min;
+        (*it).second.value().is_visited = true;
+        unattended.erase(it_min);
+        return it;
+    }
+
+    void dijkstra_step(graph_t<NodeDijkstra>& graph, NodesToBeVisited& nodes_to_be_visited) noexcept {
+        auto [key_from, node] = *nodes_to_be_visited.pop_min_weight(); // Нашли итератор на непосещенную вершину
+                                                                                                // с минимальным весом и разыменовали его
+        if (node.empty()) return; // если обособлена
+        for (auto& [key_to, weight] : node) { // достали unordered_map с ребрами
+            if (!graph.loop(key_from) && (weight + graph[key_from].marker < graph[key_to].marker)) { // условие перерасчета метки
+                graph[key_to].marker = weight + graph[key_from].marker;
+                graph[key_to].prev = key_from; // запоминаем вершину, изменившую метку
+            }
+        }
+    }
+
+    route_t find_route(graph_t<NodeDijkstra>& graph, node_name_t key_from, node_name_t key_to) noexcept {
+        route_t route;
+        if (graph[key_to].prev == MAX) { // если путь не удалось найти
+            route.push_back(key_from);
+            route.push_back(key_to);
+            return route;
+        }
+
+        route.push_back(key_to); // записали вершину, в которую хотим прийти
+        while (graph[route.back()].prev != MAX)  // восстанавливаем маршрут, пока не дойдем до None (начала маршрута)
+            route.push_back(graph[route.back()].prev);
+
+        std::reverse(route.begin(), route.end());
+        return route;
+    }
+}
+
+std::pair<weight_t, route_t> dijkstra(const matrix_t& mtr, node_name_t key_from, node_name_t key_to) noexcept {
+    graph_t<Dijikstra::NodeDijkstra> graph = create_graph<Dijikstra::NodeDijkstra>(mtr);
+    graph[key_from] = 0.0; // инициализируем алгоритм
+
+    Dijikstra::NodesToBeVisited nodes_to_be_visited{ graph };
+    while (!nodes_to_be_visited.empty())
+        dijkstra_step(graph, nodes_to_be_visited);
+    route_t route = find_route(graph, key_from, key_to);
+    return {graph[key_to].marker, route};
 }
 
 

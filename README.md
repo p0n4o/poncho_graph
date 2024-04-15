@@ -36,5 +36,6 @@ header-only library with tools for working with graphs
 
 ## Team members:
 
-Mikolaenko Vadim (Миколаенко Вадим) — team lead, author of the idea 
-Yurakov Nazar (Юраков Назар) — developer 
+- Mikolaenko Vadim (Миколаенко Вадим) — team lead, author of the idea
+  
+- Yurakov Nazar (Юраков Назар) — developer 

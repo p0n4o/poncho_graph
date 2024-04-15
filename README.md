@@ -1,4 +1,4 @@
-# PONCH_GRAPH
+# PONCHO_GRAPH
 
 A program for implementing algorithms on arbitrary graphs, including 2 libraries: matrix, graph.
 #Interaction occurs via the console#

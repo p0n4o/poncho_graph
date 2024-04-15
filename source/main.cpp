@@ -20,9 +20,9 @@ int main(int arg_count, char* arg_values[]) {
         }
 
         std::cout << "\nShortest route from 2 to 1:\n";
-        auto d = dijkstra(m0, 2, 1);
-        std::cout << d.first << '\n';
-        for (auto el : d.second) {
+        auto s = spfa(m0, 2, 1);
+        std::cout << s.first << '\n';
+        for (const auto& el : s.second) {
             std::cout << el << ' ';
         }
 

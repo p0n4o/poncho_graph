@@ -9,5 +9,4 @@ add_executable(laba3
         graph/graph.hpp
         matrix/matrix.h
         matrix/matrix.hpp
-        source/pseudonyms.h
-        source/app.hpp)
+        source/pseudonyms.h workdir/generate_matrix.hpp)

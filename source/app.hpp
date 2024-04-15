@@ -166,6 +166,19 @@ components_t compute_components(const matrix_t &mtr) noexcept {
     return Kosaraju_Sharir::components_by_dfs(graph_initial, sorted_nodes);
 }
 
+components_t compute_components_parallel(const matrix_t& mtr) noexcept {
+    graph_t<bool> graph_initial;
+    graph_t<bool> graph_inverted;
+    std::thread th_initial([&graph_initial, &mtr]() {graph_initial = create_graph<bool>(mtr);});
+    std::thread th_inverted([&graph_inverted, &mtr]() {graph_inverted = create_graph<bool>(transpose(mtr));});
+    th_initial.join();
+    th_inverted.join();
+    std::vector<node_name_t> sorted_nodes = Kosaraju_Sharir::topology_sort(graph_inverted);
+    std::reverse(sorted_nodes.begin(), sorted_nodes.end());
+    return Kosaraju_Sharir::components_by_dfs(graph_initial, sorted_nodes);
+}
+
+
 
 // DIJIKSTRA:
 namespace Dijikstra{
@@ -231,19 +244,19 @@ std::pair<weight_t, route_t> dijkstra(const matrix_t& mtr, node_name_t key_from,
 //SPFA:
 namespace SPFA{
 
-    void NodeQueue::push(graph_t<NodeSPFA>::iterator it) { // добавляем ноду в очередь обработки
+    void NodeQueue::push(graph_t<NodeSPFA>::iterator it) noexcept{ // добавляем ноду в очередь обработки
         it->second.value().is_working = true;
         queue.push_back(it);
     }
 
-    graph_t<NodeSPFA>::iterator NodeQueue::pop() { // убираем отработанную вершину из очереди обработки
+    graph_t<NodeSPFA>::iterator NodeQueue::pop() noexcept{ // убираем отработанную вершину из очереди обработки
         auto it_graph = queue.front();
         it_graph->second.value().is_working = false;
         queue.pop_front();
         return it_graph;
     }
 
-    void spfa_step(graph_t<NodeSPFA>& graph, NodeQueue& nodes_in_work) {
+    void spfa_step(graph_t<NodeSPFA>& graph, NodeQueue& nodes_in_work) noexcept{
         auto [key_from, node] = *nodes_in_work.pop(); // извлекли актуальную вершину из очереди
         if (++graph[key_from].updates == graph.size()) { // проверка на отрицательный цикл
             graph[key_from].marker = -INF;
@@ -257,7 +270,7 @@ namespace SPFA{
         }
     }
 
-    route_t make_route(graph_t<NodeSPFA>& graph, node_name_t key_from, node_name_t key_to) {
+    route_t make_route(graph_t<NodeSPFA>& graph, node_name_t key_from, node_name_t key_to) noexcept{
         route_t route;
         if (graph[key_to].marker == -INF || graph[key_to].marker == INF) { // если путь не удалось найти или путь включает отрицательный цикл
             route.push_back(key_from);
